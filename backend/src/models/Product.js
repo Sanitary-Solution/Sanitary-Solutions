@@ -64,6 +64,5 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ name: "text", description: "text", brand: "text" });
 productSchema.index({ category: 1, brand: 1 });
-productSchema.index({ legacyId: 1 });
 
 export const Product = mongoose.model("Product", productSchema);

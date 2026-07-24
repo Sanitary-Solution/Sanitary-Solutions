@@ -17,6 +17,4 @@ const brandSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-brandSchema.index({ name: 1 }, { unique: true });
-
 export const Brand = mongoose.model("Brand", brandSchema);
