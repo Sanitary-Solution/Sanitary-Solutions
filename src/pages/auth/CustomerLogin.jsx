@@ -5,12 +5,15 @@ import { Input } from "../../components/ui/Input";
 import { Label } from "../../components/ui/Label";
 import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../contexts/AuthContext";
+import { PasswordField } from "../../components/ui/PasswordField";
+import { CustomerForgotPasswordDialog } from "../../components/auth/CustomerForgotPasswordDialog";
 
 export const CustomerLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,14 +52,15 @@ export const CustomerLogin = () => {
                 required
               />
             </div>
-            <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
+            <PasswordField label="Password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <div className="text-right">
+              <button
+                type="button"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                onClick={() => setForgotOpen(true)}
+              >
+                Forgot password?
+              </button>
             </div>
             {error ? <p className="text-sm text-red-500">{error}</p> : null}
             <Button type="submit" className="w-full" disabled={loading}>
@@ -72,6 +76,7 @@ export const CustomerLogin = () => {
           </p>
         </Card>
       </div>
+      <CustomerForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </div>
   );
 };

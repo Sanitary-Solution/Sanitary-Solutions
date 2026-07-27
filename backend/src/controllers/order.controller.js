@@ -39,10 +39,11 @@ const findOrder = async (value) => {
 
 const findCustomerOrder = async (customerId, value) => {
   if (isObjectId(value)) {
-    return (
-      (await Order.findOne({ _id: value, customer: customerId })) ||
-      Order.findOne({ orderNumber: value, customer: customerId })
-    );
+    const byId = await Order.findOne({ _id: value, customer: customerId });
+    if (byId) {
+      return byId;
+    }
+    return Order.findOne({ orderNumber: value, customer: customerId });
   }
   return Order.findOne({ orderNumber: value, customer: customerId });
 };
@@ -55,6 +56,20 @@ const findProductByAnyId = async (value) => {
     }
   }
   return Product.findOne({ legacyId: String(value) });
+};
+
+const getProductSize = (product, requestedSize) => {
+  const normalizedLabel = String(requestedSize || "").trim().toLowerCase();
+
+  if (normalizedLabel && product.getSizeByLabel) {
+    return product.getSizeByLabel(normalizedLabel);
+  }
+
+  if (product.getDefaultSize) {
+    return product.getDefaultSize();
+  }
+
+  return product.sizes?.[0] || null;
 };
 
 const buildOrderNumber = async () => {
@@ -203,18 +218,32 @@ export const createOrder = asyncHandler(async (req, res) => {
         throw new ApiError(404, `Product not found for item ${candidateId}`);
       }
 
-      if (product.quantity < quantity) {
-        throw new ApiError(400, `Insufficient stock for ${product.name}`);
+      const requestedSize =
+        item.size?.label || item.size?.name || item.size?.size || item.size || item.sizeLabel || "";
+      const selectedSize = getProductSize(product, requestedSize);
+      if (requestedSize && !selectedSize) {
+        throw new ApiError(404, `Size not found for ${product.name}`);
+      }
+      const availableQuantity = selectedSize ? Number(selectedSize.quantity || 0) : Number(product.quantity || 0);
+      const unitPrice = selectedSize ? Number(selectedSize.price || product.price || 0) : Number(product.price || 0);
+      const sizeLabel = selectedSize?.label || String(requestedSize || "").trim();
+
+      if (availableQuantity < quantity) {
+        throw new ApiError(
+          400,
+          `Insufficient stock for ${product.name}${sizeLabel ? ` (${sizeLabel})` : ""}`
+        );
       }
 
       normalizedItems.push({
         product: product._id,
         name: product.name,
-        price: product.price,
+        price: unitPrice,
+        size: sizeLabel,
         quantity,
       });
 
-      productUpdates.push({ product, quantity });
+      productUpdates.push({ product, quantity, sizeLabel });
       continue;
     }
 
@@ -225,6 +254,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     normalizedItems.push({
       name: item.name.trim(),
       price: item.price,
+      size: String(item.size || "").trim(),
       quantity,
     });
   }
@@ -263,9 +293,22 @@ export const createOrder = asyncHandler(async (req, res) => {
     status: "processing",
   });
 
-  for (const { product, quantity } of productUpdates) {
-    product.quantity -= quantity;
-    product.inStock = product.quantity > 0;
+  for (const { product, quantity, sizeLabel } of productUpdates) {
+    if (sizeLabel && Array.isArray(product.sizes) && product.sizes.length > 0) {
+      const selectedSize = product.getSizeByLabel ? product.getSizeByLabel(sizeLabel) : null;
+      if (selectedSize) {
+        selectedSize.quantity = Math.max(0, Number(selectedSize.quantity || 0) - quantity);
+        selectedSize.inStock = selectedSize.quantity > 0;
+      }
+      product.quantity = product.sizes.reduce(
+        (sum, size) => sum + Number(size.quantity || 0),
+        0
+      );
+      product.inStock = product.quantity > 0;
+    } else {
+      product.quantity = Math.max(0, Number(product.quantity || 0) - quantity);
+      product.inStock = product.quantity > 0;
+    }
     await product.save();
   }
 

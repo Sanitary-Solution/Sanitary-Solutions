@@ -10,11 +10,17 @@ const cartItemSchema = new mongoose.Schema(
     snapshot: {
       name: { type: String, required: true, trim: true },
       price: { type: Number, required: true, min: 0 },
+      size: { type: String, trim: true, default: "" },
       image: { type: String, required: true, trim: true },
       category: { type: String, required: true, trim: true },
       brand: { type: String, required: true, trim: true },
       inStock: { type: Boolean, default: true },
       quantity: { type: Number, min: 0, default: 0 },
+    },
+    size: {
+      type: String,
+      trim: true,
+      default: "",
     },
     quantity: {
       type: Number,

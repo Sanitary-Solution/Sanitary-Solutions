@@ -4,6 +4,7 @@ import { Input } from "../../components/ui/Input";
 import { Label } from "../../components/ui/Label";
 import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../contexts/AuthContext";
+import { PasswordField } from "../../components/ui/PasswordField";
 
 const INITIAL_PROFILE = {
   name: "",
@@ -164,41 +165,32 @@ export const MyAccount = () => {
           <p className="text-sm text-gray-500">Use a strong password with at least 6 characters.</p>
 
           <form className="mt-6 space-y-4" onSubmit={handlePasswordSubmit}>
-            <div>
-              <Label>Current password</Label>
-              <Input
-                type="password"
-                required
-                value={passwordForm.currentPassword}
-                onChange={(event) =>
-                  setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <Label>New password</Label>
-              <Input
-                type="password"
-                minLength={6}
-                required
-                value={passwordForm.newPassword}
-                onChange={(event) =>
-                  setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <Label>Confirm new password</Label>
-              <Input
-                type="password"
-                minLength={6}
-                required
-                value={passwordForm.confirmPassword}
-                onChange={(event) =>
-                  setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
-                }
-              />
-            </div>
+            <PasswordField
+              label="Current password"
+              required
+              value={passwordForm.currentPassword}
+              onChange={(event) =>
+                setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
+              }
+            />
+            <PasswordField
+              label="New password"
+              minLength={6}
+              required
+              value={passwordForm.newPassword}
+              onChange={(event) =>
+                setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
+              }
+            />
+            <PasswordField
+              label="Confirm new password"
+              minLength={6}
+              required
+              value={passwordForm.confirmPassword}
+              onChange={(event) =>
+                setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
+              }
+            />
             {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
             {passwordMessage ? <p className="text-sm text-emerald-700">{passwordMessage}</p> : null}
             <Button type="submit" className="w-full" disabled={passwordSaving}>

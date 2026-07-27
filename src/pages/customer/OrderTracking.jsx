@@ -175,7 +175,7 @@ export const OrderTracking = () => {
                   </div>
 
                   <div className="mt-4 border-t border-gray-100 pt-4">
-                    <p className="text-sm font-semibold text-gray-900">Order details</p>
+                    <p className="text-sm font-semibold text-gray-900">Selected variants</p>
                     <div className="mt-2 space-y-2">
                       {(order.lineItems || []).map((item, index) => (
                         <div
@@ -183,7 +183,8 @@ export const OrderTracking = () => {
                           className="flex items-center justify-between text-sm"
                         >
                           <span className="text-gray-600">
-                            {item.name} x {item.quantity}
+                            {item.name}
+                            {item.size ? ` · Variant: ${item.size}` : ""} x {item.quantity}
                           </span>
                           <span className="font-medium text-gray-900">
                             {formatCurrency(item.price * item.quantity)}

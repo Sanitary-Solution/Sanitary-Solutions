@@ -14,4 +14,11 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || "replace_with_strong_secret",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  smtpHost: process.env.SMTP_HOST || "",
+  smtpPort: parsePort(process.env.SMTP_PORT, 587),
+  smtpSecure: String(process.env.SMTP_SECURE || "false").toLowerCase() === "true",
+  smtpUser: process.env.SMTP_USER || "",
+  smtpPass: process.env.SMTP_PASS || "",
+  smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER || "",
+  passwordResetOtpExpiresInMinutes: parsePort(process.env.PASSWORD_RESET_OTP_EXPIRES_IN_MINUTES, 10),
 };

@@ -222,11 +222,25 @@ export const AdminProducts = () => {
       >
         {selectedProduct ? (
           <div className="space-y-4 text-sm text-gray-700">
-            <img
-              src={selectedProduct.image}
-              alt={selectedProduct.name}
-              className="h-56 w-full rounded-xl object-cover"
-            />
+            <div className="space-y-3">
+              <img
+                src={selectedProduct.image}
+                alt={selectedProduct.name}
+                className="h-56 w-full rounded-xl object-cover"
+              />
+              {(selectedProduct.images || []).length > 1 ? (
+                <div className="flex flex-wrap gap-2">
+                  {(selectedProduct.images || []).map((image, index) => (
+                    <img
+                      key={`${selectedProduct._id}-thumb-${index}`}
+                      src={image}
+                      alt={`${selectedProduct.name} ${index + 1}`}
+                      className="h-16 w-16 rounded-lg border border-gray-200 object-cover"
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <p>
               <span className="font-semibold">Category:</span> {selectedProduct.category}
             </p>
@@ -239,6 +253,23 @@ export const AdminProducts = () => {
             <p>
               <span className="font-semibold">Stock:</span> {selectedProduct.quantity}
             </p>
+            {(selectedProduct.sizes || []).length > 0 ? (
+              <div className="rounded-xl border border-gray-200 p-4">
+                <p className="font-semibold text-gray-900">Variants</p>
+                <div className="mt-3 space-y-2">
+                  {selectedProduct.sizes.map((size, index) => (
+                    <div
+                      key={`${selectedProduct._id}-size-${index}`}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="text-gray-600">{size.label}</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(size.price)}</span>
+                      <span className="text-gray-500">{size.quantity} in stock</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <p>
               <span className="font-semibold">Description:</span> {selectedProduct.description}
             </p>

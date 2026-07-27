@@ -112,7 +112,7 @@ export const Cart = () => {
           <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
             <div className="space-y-4">
               {cart.map((item) => (
-                <Card key={item.product.id} className="p-4">
+                <Card key={`${item.product.id}-${item.size?.label || "default"}`} className="p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <img
                       src={item.product.image}
@@ -122,6 +122,11 @@ export const Cart = () => {
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">{item.product.name}</p>
                       <p className="text-xs text-gray-500">{item.product.category}</p>
+                      {item.size?.label ? (
+                        <p className="mt-1 text-xs font-medium text-blue-600">
+                          Variant: {item.size.label}
+                        </p>
+                      ) : null}
                       <p className="mt-2 text-sm font-semibold text-blue-600">
                         {formatCurrency(item.product.price)}
                       </p>
@@ -130,7 +135,7 @@ export const Cart = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size?.label)}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
@@ -140,12 +145,16 @@ export const Cart = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size?.label)}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.product.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeFromCart(item.product.id, item.size?.label)}
+                    >
                       <Trash2 className="h-4 w-4 text-gray-500" />
                     </Button>
                   </div>

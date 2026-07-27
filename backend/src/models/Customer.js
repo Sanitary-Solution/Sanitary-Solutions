@@ -41,6 +41,16 @@ const customerSchema = new mongoose.Schema(
       select: false,
       default: null,
     },
+    passwordResetOtpHash: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    passwordResetOtpExpiresAt: {
+      type: Date,
+      select: false,
+      default: null,
+    },
     hasAccount: {
       type: Boolean,
       default: false,
@@ -85,6 +95,23 @@ customerSchema.methods.comparePassword = function comparePassword(candidatePassw
     return false;
   }
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+customerSchema.methods.hasValidPasswordResetOtp = function hasValidPasswordResetOtp(otp) {
+  if (!this.passwordResetOtpHash || !this.passwordResetOtpExpiresAt) {
+    return false;
+  }
+
+  if (this.passwordResetOtpExpiresAt.getTime() < Date.now()) {
+    return false;
+  }
+
+  return bcrypt.compare(String(otp), this.passwordResetOtpHash);
+};
+
+customerSchema.methods.clearPasswordResetOtp = function clearPasswordResetOtp() {
+  this.passwordResetOtpHash = null;
+  this.passwordResetOtpExpiresAt = null;
 };
 
 export const Customer = mongoose.model("Customer", customerSchema);

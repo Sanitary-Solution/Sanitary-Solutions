@@ -5,6 +5,7 @@ import { Input } from "../../components/ui/Input";
 import { Label } from "../../components/ui/Label";
 import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../contexts/AuthContext";
+import { PasswordField } from "../../components/ui/PasswordField";
 
 export const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -40,15 +41,7 @@ export const AdminLogin = () => {
               <Label>Username</Label>
               <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
             </div>
-            <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+            <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             {error ? <p className="text-sm text-red-500">{error}</p> : null}
             <Button type="submit" className="w-full">
               {loading ? "Signing in..." : "Sign in"}

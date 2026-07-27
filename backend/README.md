@@ -68,6 +68,9 @@ npm run seed:reset
   - `POST /auth/login`
   - `GET /auth/me`
   - `POST /auth/change-password` (admin)
+  - `POST /customer-auth/forgot-password`
+  - `POST /customer-auth/verify-password-reset`
+  - `POST /customer-auth/reset-password`
 - Products
   - `GET /products`
   - `GET /products/meta`
@@ -120,3 +123,15 @@ After seeding:
 
 - Username: `admin`
 - Password: `admin123`
+
+## Password Reset Email
+
+Configure these environment variables for customer password reset emails:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+- `PASSWORD_RESET_OTP_EXPIRES_IN_MINUTES`

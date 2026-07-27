@@ -21,18 +21,34 @@ const getProductLookupKey = (value) => {
   return { legacyId: String(value) };
 };
 
+const getProductSize = (product, requestedSize) => {
+  const normalizedLabel = String(requestedSize || "").trim().toLowerCase();
+
+  if (normalizedLabel && product.getSizeByLabel) {
+    return product.getSizeByLabel(normalizedLabel);
+  }
+
+  if (product.getDefaultSize) {
+    return product.getDefaultSize();
+  }
+
+  return product.sizes?.[0] || null;
+};
+
 const mergeCartItems = (targetItems = [], sourceItems = []) => {
   const map = new Map();
 
   const push = (item) => {
     const productId = String(item.product);
-    const existing = map.get(productId);
+    const sizeKey = String(item.size || "").trim().toLowerCase();
+    const existing = map.get(`${productId}:${sizeKey}`);
     if (existing) {
       existing.quantity += item.quantity;
     } else {
-      map.set(productId, {
+      map.set(`${productId}:${sizeKey}`, {
         product: item.product,
         snapshot: item.snapshot,
+        size: item.size || "",
         quantity: item.quantity,
       });
     }
@@ -53,6 +69,7 @@ const formatCartForClient = (cartDoc) => {
     customerEmail: cart.customerEmail,
     items: (cart.items || []).map((item) => ({
       productId: String(item.product),
+      size: item.size || "",
       quantity: item.quantity,
       product: {
         _id: String(item.product),
@@ -156,21 +173,32 @@ const buildCartItems = async (itemsPayload) => {
       throw new ApiError(404, `Product not found for cart item ${candidateId}`);
     }
 
-    const key = String(product._id);
+    const requestedSize =
+      item.size?.label || item.size?.name || item.size?.size || item.size || item.sizeLabel || "";
+    const selectedSize = getProductSize(product, requestedSize);
+    if (requestedSize && !selectedSize) {
+      throw new ApiError(404, `Size not found for cart item ${candidateId}`);
+    }
+    const sizeLabel = selectedSize?.label || String(requestedSize || "").trim();
+    const unitPrice = selectedSize ? Number(selectedSize.price || product.price || 0) : Number(product.price || 0);
+    const availableQuantity = selectedSize ? Number(selectedSize.quantity || 0) : Number(product.quantity || 0);
+    const key = `${String(product._id)}:${String(sizeLabel || "").toLowerCase()}`;
     const existing = itemAccumulator.get(key);
     if (existing) {
       existing.quantity += quantity;
     } else {
       itemAccumulator.set(key, {
         product: product._id,
+        size: sizeLabel,
         snapshot: {
           name: product.name,
-          price: product.price,
+          price: unitPrice,
+          size: sizeLabel,
           image: product.image,
           category: product.category,
           brand: product.brand,
-          inStock: product.inStock,
-          quantity: product.quantity,
+          inStock: availableQuantity > 0,
+          quantity: availableQuantity,
         },
         quantity,
       });

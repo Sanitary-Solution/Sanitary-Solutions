@@ -51,17 +51,33 @@ const normalizeProduct = (product) => {
   const productId = product?._id || product?.id;
   if (!productId) return null;
 
+  const images = Array.isArray(product?.images)
+    ? product.images.map((image) => String(image || "").trim()).filter(Boolean)
+    : [];
+  const sizes = Array.isArray(product?.sizes)
+    ? product.sizes
+        .map((size) => ({
+          label: String(size?.label || "").trim(),
+          price: Number(size?.price || 0),
+          quantity: Number(size?.quantity || 0),
+          inStock: Boolean(size?.inStock ?? Number(size?.quantity || 0) > 0),
+        }))
+        .filter((size) => size.label)
+    : [];
+
   return {
     ...product,
     id: String(productId),
     _id: String(productId),
     price: Number(product?.price || 0),
     image: product?.image || "",
+    images: images.length > 0 ? images : product?.image ? [product.image] : [],
     name: product?.name || "Product",
     category: product?.category || "",
     brand: product?.brand || "",
     inStock: product?.inStock !== false,
     quantity: Number.isFinite(product?.quantity) ? product.quantity : 0,
+    sizes,
   };
 };
 
@@ -71,10 +87,12 @@ const mapServerItems = (items = []) =>
       const product = normalizeProduct(item?.product);
       if (!product) return null;
       const quantity = Number.parseInt(item?.quantity, 10);
+      const size = item?.size || item?.product?.size || "";
 
       return {
         product,
         quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
+        size: typeof size === "string" ? { label: size } : size || null,
       };
     })
     .filter(Boolean);
@@ -84,8 +102,11 @@ const buildItemsPayload = (items = []) =>
     .map((item) => ({
       productId: item?.product?._id || item?.product?.id,
       quantity: Number.parseInt(item?.quantity, 10),
+      size: item?.size?.label || item?.size?.name || item?.size?.size || item?.size || "",
     }))
     .filter((item) => item.productId && Number.isInteger(item.quantity) && item.quantity > 0);
+
+const getItemKey = (productId, sizeLabel) => `${String(productId || "")}:${String(sizeLabel || "").trim().toLowerCase()}`;
 
 export const CartProvider = ({ children }) => {
   const [sessionId] = useState(() => getOrCreateSessionId());
@@ -165,27 +186,70 @@ export const CartProvider = ({ children }) => {
     const normalizedProduct = normalizeProduct(product);
     if (!normalizedProduct) return;
 
-    const quantity = Number.parseInt(quantityToAdd, 10);
+    const quantity = typeof quantityToAdd === "object"
+      ? Number.parseInt(quantityToAdd?.quantity ?? 1, 10)
+      : Number.parseInt(quantityToAdd, 10);
     if (!Number.isInteger(quantity) || quantity <= 0) return;
+    const selectedSize =
+      typeof quantityToAdd === "object"
+        ? quantityToAdd?.size || null
+        : null;
+    const fallbackSize = normalizedProduct.sizes?.[0] || null;
+    const activeSize = selectedSize || fallbackSize;
+    const sizeLabel = String(activeSize?.label || "").trim();
+    const availableStock = Number.isFinite(activeSize?.quantity)
+      ? activeSize.quantity
+      : Number(normalizedProduct.quantity || 0);
+    if (availableStock <= 0) {
+      return;
+    }
 
     await enqueueCartTask(async () => {
       const previous = cartRef.current;
-      const existing = previous.find((item) => item.product.id === normalizedProduct.id);
+      const existing = previous.find(
+        (item) => getItemKey(item.product.id, item.size?.label) === getItemKey(normalizedProduct.id, sizeLabel)
+      );
+      const nextQuantity = Math.min(quantity, availableStock);
 
       const nextItems = existing
         ? previous.map((item) =>
-            item.product.id === normalizedProduct.id
-              ? { ...item, quantity: item.quantity + quantity }
+            getItemKey(item.product.id, item.size?.label) === getItemKey(normalizedProduct.id, sizeLabel)
+              ? {
+                  ...item,
+                  quantity: Math.min(item.quantity + nextQuantity, availableStock),
+                }
               : item
           )
-        : [...previous, { product: normalizedProduct, quantity }];
+        : [
+            ...previous,
+            {
+              product: {
+                ...normalizedProduct,
+                price: Number(activeSize?.price ?? normalizedProduct.price ?? 0),
+                quantity: Number.isFinite(activeSize?.quantity)
+                  ? activeSize.quantity
+                  : normalizedProduct.quantity,
+                image: normalizedProduct.image,
+              },
+              quantity: nextQuantity,
+              size: activeSize
+                ? {
+                    label: String(activeSize.label || "").trim(),
+                    price: Number(activeSize.price ?? normalizedProduct.price ?? 0),
+                    quantity: Number.isFinite(activeSize.quantity)
+                      ? activeSize.quantity
+                      : normalizedProduct.quantity,
+                  }
+                : null,
+            },
+          ];
 
       setCartState(nextItems);
       await syncItemsToBackend(nextItems);
     });
   };
 
-  const updateQuantity = async (productId, quantity) => {
+  const updateQuantity = async (productId, quantity, sizeLabel = "") => {
     const normalizedProductId = String(productId || "");
     if (!normalizedProductId) return;
 
@@ -199,8 +263,19 @@ export const CartProvider = ({ children }) => {
 
     await enqueueCartTask(async () => {
       const previous = cartRef.current;
+      const targetItem = previous.find(
+        (item) => getItemKey(item.product.id, item.size?.label) === getItemKey(normalizedProductId, sizeLabel)
+      );
+      const stockLimit = Number.isFinite(targetItem?.size?.quantity)
+        ? targetItem.size.quantity
+        : Number(targetItem?.product.quantity || 0);
+      if (stockLimit <= 0) {
+        return;
+      }
       const nextItems = previous.map((item) =>
-        item.product.id === normalizedProductId ? { ...item, quantity: nextQuantity } : item
+        getItemKey(item.product.id, item.size?.label) === getItemKey(normalizedProductId, sizeLabel)
+          ? { ...item, quantity: Math.min(nextQuantity, stockLimit) }
+          : item
       );
 
       setCartState(nextItems);
@@ -208,13 +283,15 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  const removeFromCart = async (productId) => {
+  const removeFromCart = async (productId, sizeLabel = "") => {
     const normalizedProductId = String(productId || "");
     if (!normalizedProductId) return;
 
     await enqueueCartTask(async () => {
       const previous = cartRef.current;
-      const nextItems = previous.filter((item) => item.product.id !== normalizedProductId);
+      const nextItems = previous.filter(
+        (item) => getItemKey(item.product.id, item.size?.label) !== getItemKey(normalizedProductId, sizeLabel)
+      );
 
       setCartState(nextItems);
       await syncItemsToBackend(nextItems);

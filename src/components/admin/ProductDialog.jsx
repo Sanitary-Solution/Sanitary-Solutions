@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Upload, Link as LinkIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Label } from "../ui/Label";
 import { Textarea } from "../ui/Textarea";
 import { Select } from "../ui/Select";
+
+const EMPTY_SIZE = { label: "", price: 0, quantity: 0 };
 
 const getDefaultFormData = (categoryOptions, brandOptions) => ({
   name: "",
@@ -14,11 +16,22 @@ const getDefaultFormData = (categoryOptions, brandOptions) => ({
   category: categoryOptions[0] || "",
   brand: brandOptions[0] || "",
   image: "",
+  images: [""],
   quantity: 0,
   inStock: true,
   rating: 4.5,
   reviews: 10,
+  sizes: [],
 });
+
+const normalizeSizesForForm = (sizes = []) =>
+  sizes.length > 0
+    ? sizes.map((size) => ({
+        label: size.label || "",
+        price: Number(size.price || 0),
+        quantity: Number(size.quantity || 0),
+      }))
+    : [];
 
 const pickEditableFields = (product, fallback) => ({
   name: product?.name ?? fallback.name,
@@ -27,11 +40,23 @@ const pickEditableFields = (product, fallback) => ({
   category: product?.category ?? fallback.category,
   brand: product?.brand ?? fallback.brand,
   image: product?.image ?? fallback.image,
+  images:
+    product?.images?.length > 0
+      ? product.images
+      : product?.image
+      ? [product.image]
+      : fallback.images,
   quantity: product?.quantity ?? fallback.quantity,
   inStock: product?.inStock ?? fallback.inStock,
   rating: product?.rating ?? fallback.rating,
   reviews: product?.reviews ?? fallback.reviews,
+  sizes: normalizeSizesForForm(product?.sizes),
 });
+
+const normalizeImageList = (images = []) =>
+  images
+    .map((image) => String(image || "").trim())
+    .filter(Boolean);
 
 export const ProductDialog = ({
   open,
@@ -47,13 +72,14 @@ export const ProductDialog = ({
   );
 
   const [formData, setFormData] = useState(defaults);
-  const [imageUploadMethod, setImageUploadMethod] = useState("url");
   const [imagePreview, setImagePreview] = useState("");
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (product) {
-      setFormData(pickEditableFields(product, defaults));
-      setImagePreview(product.image || "");
+      const nextData = pickEditableFields(product, defaults);
+      setFormData(nextData);
+      setImagePreview(nextData.images[0] || nextData.image || "");
       return;
     }
 
@@ -65,34 +91,138 @@ export const ProductDialog = ({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    onSave({
-      ...formData,
-      inStock: Boolean(formData.inStock) && Number(formData.quantity) > 0,
-      quantity: Number(formData.quantity) || 0,
-      price: Number(formData.price) || 0,
+  const handleImageChange = (index, value) => {
+    setFormData((prev) => {
+      const nextImages = [...prev.images];
+      nextImages[index] = value;
+      return {
+        ...prev,
+        images: nextImages,
+        image: nextImages.find((image) => String(image || "").trim()) || "",
+      };
+    });
+    setImagePreview(value);
+  };
+
+  const handleAddImage = () => {
+    setFormData((prev) => ({ ...prev, images: [...prev.images, ""] }));
+  };
+
+  const handleRemoveImage = (index) => {
+    setFormData((prev) => {
+      const nextImages = prev.images.filter((_, imageIndex) => imageIndex !== index);
+      const normalized = nextImages.length > 0 ? nextImages : [""];
+      const primaryImage = normalized.find((image) => String(image || "").trim()) || "";
+      setImagePreview(primaryImage);
+      return {
+        ...prev,
+        images: normalized,
+        image: primaryImage,
+      };
     });
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File size should not exceed 5MB");
-      return;
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const fileUrls = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise((resolve, reject) => {
+            if (file.size > 5 * 1024 * 1024) {
+              reject(new Error("File size should not exceed 5MB"));
+              return;
+            }
+            if (!file.type.startsWith("image/")) {
+              reject(new Error("Please upload image files only"));
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("Unable to read image file"));
+            reader.readAsDataURL(file);
+          })
+      )
+    ).catch((error) => {
+      alert(error.message || "Unable to upload image");
+      return [];
+    });
+
+    if (fileUrls.length > 0) {
+      setFormData((prev) => {
+        const currentImages = normalizeImageList(prev.images);
+        const nextImages = [...currentImages, ...fileUrls.filter(Boolean)];
+        const primaryImage = nextImages[0] || "";
+        setImagePreview(primaryImage);
+        return {
+          ...prev,
+          images: nextImages.length > 0 ? nextImages : [""],
+          image: primaryImage,
+        };
+      });
     }
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file");
+
+    event.target.value = "";
+  };
+
+  const handleAddSize = () => {
+    setFormData((prev) => ({
+      ...prev,
+      sizes: [...prev.sizes, { ...EMPTY_SIZE, price: prev.price || 0 }],
+    }));
+  };
+
+  const handleSizeChange = (index, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      sizes: prev.sizes.map((size, sizeIndex) =>
+        sizeIndex === index ? { ...size, [field]: value } : size
+      ),
+    }));
+  };
+
+  const handleRemoveSize = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      sizes: prev.sizes.filter((_, sizeIndex) => sizeIndex !== index),
+    }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    const normalizedImages = normalizeImageList(formData.images);
+    if (normalizedImages.length === 0) {
+      alert("Please add at least one product image.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-      handleChange("image", reader.result);
-    };
-    reader.readAsDataURL(file);
+    const normalizedSizes = formData.sizes
+      .map((size) => ({
+        label: String(size.label || "").trim(),
+        price: Number(size.price || 0),
+        quantity: Number.parseInt(size.quantity, 10) || 0,
+      }))
+      .filter((size) => size.label);
+
+    const hasSizes = normalizedSizes.length > 0;
+    const primaryImage = normalizedImages[0];
+    const totalQuantity = hasSizes
+      ? normalizedSizes.reduce((sum, size) => sum + Number(size.quantity || 0), 0)
+      : Number(formData.quantity) || 0;
+    const derivedPrice = hasSizes ? Number(normalizedSizes[0]?.price || 0) : Number(formData.price) || 0;
+
+    onSave({
+      ...formData,
+      image: primaryImage,
+      images: normalizedImages,
+      price: derivedPrice,
+      quantity: totalQuantity,
+      inStock: hasSizes ? totalQuantity > 0 : Boolean(formData.inStock) && totalQuantity > 0,
+      sizes: normalizedSizes,
+    });
   };
 
   return (
@@ -100,7 +230,7 @@ export const ProductDialog = ({
       open={open}
       onClose={onClose}
       title={product ? "Edit product" : "Add new product"}
-      description="Keep catalog details complete for accurate ordering."
+      description="Add clear gallery images and variants so customers see the right product details."
       size="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -170,9 +300,15 @@ export const ProductDialog = ({
               step="0.01"
               min="0"
               value={formData.price}
-              onChange={(event) => handleChange("price", parseFloat(event.target.value) || 0)}
+              onChange={(event) => handleChange("price", Number(event.target.value) || 0)}
               required
             />
+            {formData.sizes.length > 0 ? (
+              <p className="mt-1 text-xs text-gray-500">
+                When variants are added, the first variant price becomes the product price shown in the
+                catalog.
+              </p>
+            ) : null}
           </div>
           <div>
             <Label>Stock quantity</Label>
@@ -180,74 +316,145 @@ export const ProductDialog = ({
               type="number"
               min="0"
               value={formData.quantity}
-              onChange={(event) => handleChange("quantity", parseInt(event.target.value, 10) || 0)}
+              onChange={(event) => handleChange("quantity", Number.parseInt(event.target.value, 10) || 0)}
               required
             />
+            {formData.sizes.length > 0 ? (
+              <p className="mt-1 text-xs text-gray-500">
+                When variants are added, this becomes the total stock across all variants.
+              </p>
+            ) : null}
           </div>
         </div>
 
         <div>
-          <Label>Product image</Label>
-          <div className="mt-2 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setImageUploadMethod("url")}
-              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm ${
-                imageUploadMethod === "url"
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 text-gray-600"
-              }`}
-            >
-              <LinkIcon className="h-4 w-4" />
-              URL
-            </button>
-            <button
-              type="button"
-              onClick={() => setImageUploadMethod("file")}
-              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm ${
-                imageUploadMethod === "file"
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 text-gray-600"
-              }`}
-            >
-              <Upload className="h-4 w-4" />
-              Upload
-            </button>
+          <div className="flex items-center justify-between gap-3">
+            <Label>Gallery images</Label>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleAddImage}>
+                <Plus className="h-4 w-4" />
+                Add image
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4" />
+                Upload files
+              </Button>
+            </div>
           </div>
 
-          {imageUploadMethod === "url" ? (
-            <Input
-              className="mt-3"
-              type="url"
-              value={formData.image}
-              onChange={(event) => {
-                handleChange("image", event.target.value);
-                setImagePreview(event.target.value);
-              }}
-              placeholder="https://example.com/image.jpg"
-            />
-          ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-gray-200 p-6 text-center">
-              <input
-                id="file-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="file-upload" className="cursor-pointer text-sm text-gray-500">
-                Click to upload an image (PNG, JPG, WEBP)
-              </label>
-            </div>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+
+          <div className="mt-3 space-y-3">
+            {formData.images.map((image, index) => (
+              <div key={`image-${index}`} className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Input
+                    type="url"
+                    value={image}
+                    onChange={(event) => handleImageChange(index, event.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    required={index === 0}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveImage(index)}
+                  disabled={formData.images.length === 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
 
           {imagePreview ? (
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="mt-4 h-48 w-full rounded-xl object-contain"
-            />
+            <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+              <img src={imagePreview} alt="Preview" className="h-48 w-full object-contain" />
+            </div>
           ) : null}
+          <p className="mt-2 text-xs text-gray-500">
+            The first image becomes the primary product image everywhere else in the store.
+          </p>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label>Variants</Label>
+              <p className="mt-1 text-xs text-gray-500">
+                Optional. Add one row per variant with its own price and stock.
+              </p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleAddSize}>
+              <Plus className="h-4 w-4" />
+              Add variant
+            </Button>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            {formData.sizes.map((size, index) => (
+              <div key={`size-${index}`} className="rounded-xl border border-gray-200 p-4">
+                <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
+                  <div>
+                    <Label>Variant</Label>
+                    <Input
+                      value={size.label}
+                      onChange={(event) => handleSizeChange(index, "label", event.target.value)}
+                      placeholder="Small"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Price (Rs)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={size.price}
+                      onChange={(event) => handleSizeChange(index, "price", Number(event.target.value) || 0)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Stock</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={size.quantity}
+                      onChange={(event) =>
+                        handleSizeChange(index, "quantity", Number.parseInt(event.target.value, 10) || 0)
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveSize(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {formData.sizes.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+                No variants yet. Add variants if this product needs different prices or stock by variant.
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

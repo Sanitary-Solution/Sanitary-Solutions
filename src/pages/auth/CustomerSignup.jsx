@@ -5,6 +5,7 @@ import { Input } from "../../components/ui/Input";
 import { Label } from "../../components/ui/Label";
 import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../contexts/AuthContext";
+import { PasswordField } from "../../components/ui/PasswordField";
 
 const INITIAL_FORM = {
   name: "",
@@ -78,16 +79,13 @@ export const CustomerSignup = () => {
                 />
               </div>
             </div>
-            <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                minLength={6}
-                value={formData.password}
-                onChange={(event) => handleChange("password", event.target.value)}
-                required
-              />
-            </div>
+            <PasswordField
+              label="Password"
+              minLength={6}
+              value={formData.password}
+              onChange={(event) => handleChange("password", event.target.value)}
+              required
+            />
             <div>
               <Label>Address</Label>
               <Input

@@ -5,6 +5,7 @@ import { Label } from "../../components/ui/Label";
 import { Button } from "../../components/ui/Button";
 import { getSettingsApi, updateSettingsApi } from "../../services/adminApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { PasswordField } from "../../components/ui/PasswordField";
 
 const DEFAULT_SETTINGS = {
   storeName: "",
@@ -175,39 +176,30 @@ export const Settings = () => {
           Update admin login password used in the admin sign in page.
         </p>
         <form className="space-y-4" onSubmit={handlePasswordSubmit}>
-          <div>
-            <Label>Current password</Label>
-            <Input
-              type="password"
-              value={passwordForm.currentPassword}
-              onChange={(event) =>
-                setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
-              }
-              required
-            />
-          </div>
-          <div>
-            <Label>New password</Label>
-            <Input
-              type="password"
-              value={passwordForm.newPassword}
-              onChange={(event) =>
-                setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
-              }
-              required
-            />
-          </div>
-          <div>
-            <Label>Confirm new password</Label>
-            <Input
-              type="password"
-              value={passwordForm.confirmPassword}
-              onChange={(event) =>
-                setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
-              }
-              required
-            />
-          </div>
+          <PasswordField
+            label="Current password"
+            value={passwordForm.currentPassword}
+            onChange={(event) =>
+              setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
+            }
+            required
+          />
+          <PasswordField
+            label="New password"
+            value={passwordForm.newPassword}
+            onChange={(event) =>
+              setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
+            }
+            required
+          />
+          <PasswordField
+            label="Confirm new password"
+            value={passwordForm.confirmPassword}
+            onChange={(event) =>
+              setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
+            }
+            required
+          />
           {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
           {passwordMessage ? <p className="text-sm text-emerald-600">{passwordMessage}</p> : null}
           <Button type="submit">{passwordLoading ? "Changing..." : "Change password"}</Button>

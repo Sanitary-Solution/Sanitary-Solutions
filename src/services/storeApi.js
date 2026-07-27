@@ -80,6 +80,30 @@ export const customerLoginApi = async ({ email, password }) => {
   return unwrap(response);
 };
 
+export const requestCustomerPasswordResetOtpApi = async ({ email }) => {
+  const response = await apiRequest("/customer-auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+  return unwrap(response);
+};
+
+export const verifyCustomerPasswordResetOtpApi = async ({ email, otp }) => {
+  const response = await apiRequest("/customer-auth/verify-password-reset", {
+    method: "POST",
+    body: { email, otp },
+  });
+  return unwrap(response);
+};
+
+export const resetCustomerPasswordApi = async ({ resetToken, newPassword }) => {
+  const response = await apiRequest("/customer-auth/reset-password", {
+    method: "POST",
+    body: { resetToken, newPassword },
+  });
+  return unwrap(response);
+};
+
 export const getCurrentCustomerApi = async () => {
   const response = await apiRequest("/customer-auth/me", { auth: true, authRole: "customer" });
   return unwrap(response);

@@ -17,6 +17,72 @@ const SORT_MAP = {
 
 const isObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
+const parseNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeImageList = (productImage, images) => {
+  const normalizedImages = Array.isArray(images)
+    ? images.map((image) => String(image || "").trim()).filter(Boolean)
+    : [];
+  const primaryImage = String(productImage || "").trim();
+
+  if (normalizedImages.length > 0) {
+    return Array.from(new Set([primaryImage, ...normalizedImages].filter(Boolean)));
+  }
+
+  return primaryImage ? [primaryImage] : [];
+};
+
+const normalizeSizes = (sizes) => {
+  if (!Array.isArray(sizes)) {
+    return [];
+  }
+
+  return sizes
+    .map((size) => ({
+      label: String(size?.label || "").trim(),
+      price: parseNumber(size?.price),
+      quantity: Math.max(0, parseInt(size?.quantity, 10) || 0),
+    }))
+    .filter((size) => size.label)
+    .map((size) => ({
+      ...size,
+      inStock: size.quantity > 0,
+    }));
+};
+
+const deriveProductValues = (payload = {}) => {
+  const sizes = normalizeSizes(payload.sizes);
+  const images = normalizeImageList(payload.image, payload.images);
+  const hasSizes = sizes.length > 0;
+  const basePrice = parseNumber(payload.price);
+  const baseQuantity = Math.max(0, parseInt(payload.quantity, 10) || 0);
+  const totalQuantity = hasSizes
+    ? sizes.reduce((sum, size) => sum + Number(size.quantity || 0), 0)
+    : baseQuantity;
+
+  return {
+    ...payload,
+    image: images[0] || String(payload.image || "").trim(),
+    images,
+    sizes,
+    price: hasSizes ? Number(sizes[0]?.price ?? basePrice) : basePrice,
+    quantity: totalQuantity,
+    inStock: hasSizes ? totalQuantity > 0 : Boolean(payload.inStock ?? baseQuantity > 0),
+  };
+};
+
+const getProductSize = (product, sizeLabel) => {
+  const normalizedLabel = String(sizeLabel || "").trim().toLowerCase();
+  if (!normalizedLabel) {
+    return product.getDefaultSize ? product.getDefaultSize() : product.sizes?.[0] || null;
+  }
+
+  return product.getSizeByLabel ? product.getSizeByLabel(normalizedLabel) : null;
+};
+
 const findProductByAnyId = async (value) => {
   if (isObjectId(value)) {
     const product = await Product.findById(value);
@@ -116,11 +182,7 @@ export const getProductById = asyncHandler(async (req, res) => {
 });
 
 export const createProduct = asyncHandler(async (req, res) => {
-  const payload = {
-    ...req.body,
-    inStock:
-      typeof req.body.inStock === "boolean" ? req.body.inStock : Number(req.body.quantity || 0) > 0,
-  };
+  const payload = deriveProductValues(req.body);
   await ensureCategoryAndBrandExist(payload);
   const product = await Product.create(payload);
   res.status(201).json(new ApiResponse(201, "Product created", product));
@@ -133,11 +195,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Product not found");
   }
 
-  Object.assign(product, req.body);
+  Object.assign(product, deriveProductValues(req.body));
   await ensureCategoryAndBrandExist(req.body);
-  if (typeof req.body.quantity === "number" && typeof req.body.inStock !== "boolean") {
-    product.inStock = req.body.quantity > 0;
-  }
   await product.save();
 
   res.status(200).json(new ApiResponse(200, "Product updated", product));
