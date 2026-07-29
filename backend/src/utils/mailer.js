@@ -4,8 +4,17 @@ import { ApiError } from "./ApiError.js";
 
 let cachedTransporter = null;
 
+const isPlaceholderSmtpHost = (value) => value === "smtp.example.com";
+
 const hasSmtpConfig = () =>
-  Boolean(env.smtpHost && env.smtpPort && env.smtpUser && env.smtpPass && env.smtpFrom);
+  Boolean(
+    env.smtpHost &&
+      !isPlaceholderSmtpHost(env.smtpHost) &&
+      env.smtpPort &&
+      env.smtpUser &&
+      env.smtpPass &&
+      env.smtpFrom
+  );
 
 export const getMailerTransporter = () => {
   if (cachedTransporter) {
@@ -15,7 +24,7 @@ export const getMailerTransporter = () => {
   if (!hasSmtpConfig()) {
     throw new ApiError(
       500,
-      "SMTP credentials are not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_FROM."
+      "SMTP credentials are not configured. Replace the placeholder SMTP values in backend/.env with a real mail provider host, username, password, and from address."
     );
   }
 

@@ -64,6 +64,15 @@ export const createOrderApi = async (payload) => {
   return unwrap(response);
 };
 
+export const cancelMyOrderApi = async (id) => {
+  const response = await apiRequest(`/orders/my/${id}/cancel`, {
+    method: "PATCH",
+    auth: true,
+    authRole: "customer",
+  });
+  return unwrap(response);
+};
+
 export const customerSignupApi = async (payload) => {
   const response = await apiRequest("/customer-auth/signup", {
     method: "POST",

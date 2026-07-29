@@ -22,6 +22,34 @@ const parseNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizeDiscount = (payload = {}) => {
+  const discountEnabled = Boolean(payload.discountEnabled);
+  if (!discountEnabled) {
+    return {
+      discountEnabled: false,
+      originalPrice: null,
+      discountedPrice: null,
+    };
+  }
+
+  const originalPrice = Number(payload.originalPrice);
+  const discountedPrice = Number(payload.discountedPrice);
+
+  if (!Number.isFinite(originalPrice) || !Number.isFinite(discountedPrice)) {
+    throw new ApiError(400, "Original price and discounted price are required when discount is enabled");
+  }
+
+  if (originalPrice <= discountedPrice) {
+    throw new ApiError(400, "Discounted price must be lower than original price");
+  }
+
+  return {
+    discountEnabled: true,
+    originalPrice,
+    discountedPrice,
+  };
+};
+
 const normalizeImageList = (productImage, images) => {
   const normalizedImages = Array.isArray(images)
     ? images.map((image) => String(image || "").trim()).filter(Boolean)
@@ -59,6 +87,7 @@ const deriveProductValues = (payload = {}) => {
   const hasSizes = sizes.length > 0;
   const basePrice = parseNumber(payload.price);
   const baseQuantity = Math.max(0, parseInt(payload.quantity, 10) || 0);
+  const discount = normalizeDiscount(payload);
   const totalQuantity = hasSizes
     ? sizes.reduce((sum, size) => sum + Number(size.quantity || 0), 0)
     : baseQuantity;
@@ -68,7 +97,14 @@ const deriveProductValues = (payload = {}) => {
     image: images[0] || String(payload.image || "").trim(),
     images,
     sizes,
-    price: hasSizes ? Number(sizes[0]?.price ?? basePrice) : basePrice,
+    price: discount.discountEnabled
+      ? discount.discountedPrice
+      : hasSizes
+      ? Number(sizes[0]?.price ?? basePrice)
+      : basePrice,
+    originalPrice: discount.originalPrice,
+    discountedPrice: discount.discountedPrice,
+    discountEnabled: discount.discountEnabled,
     quantity: totalQuantity,
     inStock: hasSizes ? totalQuantity > 0 : Boolean(payload.inStock ?? baseQuantity > 0),
   };

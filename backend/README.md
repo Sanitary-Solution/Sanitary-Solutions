@@ -135,3 +135,5 @@ Configure these environment variables for customer password reset emails:
 - `SMTP_PASS`
 - `SMTP_FROM`
 - `PASSWORD_RESET_OTP_EXPIRES_IN_MINUTES`
+
+The sample values in `backend/.env.example` are placeholders. Replace `SMTP_HOST` with your real SMTP provider host before using password reset email features.

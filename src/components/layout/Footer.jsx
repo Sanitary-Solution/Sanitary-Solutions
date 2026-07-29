@@ -27,7 +27,7 @@ export const Footer = () => (
             </li>
             <li className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-blue-600" />
-              +92 300 555 7788
+              +92 321 487 0560
             </li>
             <li className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-blue-600" />

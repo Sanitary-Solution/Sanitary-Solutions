@@ -13,6 +13,8 @@ const getDefaultFormData = (categoryOptions, brandOptions) => ({
   name: "",
   description: "",
   price: 0,
+  discountEnabled: false,
+  discountedPrice: 0,
   category: categoryOptions[0] || "",
   brand: brandOptions[0] || "",
   image: "",
@@ -36,7 +38,9 @@ const normalizeSizesForForm = (sizes = []) =>
 const pickEditableFields = (product, fallback) => ({
   name: product?.name ?? fallback.name,
   description: product?.description ?? fallback.description,
-  price: product?.price ?? fallback.price,
+  price: product?.originalPrice ?? product?.price ?? fallback.price,
+  discountEnabled: Boolean(product?.discountEnabled),
+  discountedPrice: product?.discountedPrice ?? product?.price ?? fallback.discountedPrice,
   category: product?.category ?? fallback.category,
   brand: product?.brand ?? fallback.brand,
   image: product?.image ?? fallback.image,
@@ -208,16 +212,32 @@ export const ProductDialog = ({
       .filter((size) => size.label);
 
     const hasSizes = normalizedSizes.length > 0;
+    const discountEnabled = Boolean(formData.discountEnabled);
+    const originalPrice = Number(formData.price) || 0;
+    const discountedPrice = discountEnabled ? Number(formData.discountedPrice) || 0 : null;
+
+    if (discountEnabled && discountedPrice >= originalPrice) {
+      alert("Discounted price must be lower than the original price.");
+      return;
+    }
+
     const primaryImage = normalizedImages[0];
     const totalQuantity = hasSizes
       ? normalizedSizes.reduce((sum, size) => sum + Number(size.quantity || 0), 0)
       : Number(formData.quantity) || 0;
-    const derivedPrice = hasSizes ? Number(normalizedSizes[0]?.price || 0) : Number(formData.price) || 0;
+    const derivedPrice = hasSizes
+      ? Number(normalizedSizes[0]?.price || 0)
+      : discountEnabled
+      ? discountedPrice
+      : originalPrice;
 
     onSave({
       ...formData,
       image: primaryImage,
       images: normalizedImages,
+      originalPrice: discountEnabled ? originalPrice : null,
+      discountedPrice: discountEnabled ? discountedPrice : null,
+      discountEnabled,
       price: derivedPrice,
       quantity: totalQuantity,
       inStock: hasSizes ? totalQuantity > 0 : Boolean(formData.inStock) && totalQuantity > 0,
@@ -294,7 +314,7 @@ export const ProductDialog = ({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Price (Rs)</Label>
+            <Label>{formData.discountEnabled ? "Original price (Rs)" : "Price (Rs)"}</Label>
             <Input
               type="number"
               step="0.01"
@@ -303,11 +323,34 @@ export const ProductDialog = ({
               onChange={(event) => handleChange("price", Number(event.target.value) || 0)}
               required
             />
-            {formData.sizes.length > 0 ? (
+            {formData.discountEnabled ? (
+              <p className="mt-1 text-xs text-gray-500">
+                Enter the original price before the discount.
+              </p>
+            ) : formData.sizes.length > 0 ? (
               <p className="mt-1 text-xs text-gray-500">
                 When variants are added, the first variant price becomes the product price shown in the
                 catalog.
               </p>
+            ) : null}
+
+            {formData.discountEnabled ? (
+              <div className="mt-4">
+                <Label>Discounted price (Rs)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.discountedPrice}
+                  onChange={(event) =>
+                    handleChange("discountedPrice", Number(event.target.value) || 0)
+                  }
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  The discounted price must be lower than the original price.
+                </p>
+              </div>
             ) : null}
           </div>
           <div>
@@ -325,6 +368,23 @@ export const ProductDialog = ({
               </p>
             ) : null}
           </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={formData.discountEnabled}
+            onChange={(event) =>
+              setFormData((prev) => ({
+                ...prev,
+                discountEnabled: event.target.checked,
+                discountedPrice: event.target.checked
+                  ? prev.discountedPrice || prev.price
+                  : 0,
+              }))
+            }
+          />
+          <span className="text-sm text-gray-700">Enable discount</span>
         </div>
 
         <div>

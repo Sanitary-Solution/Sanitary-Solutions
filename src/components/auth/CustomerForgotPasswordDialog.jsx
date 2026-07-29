@@ -36,7 +36,7 @@ export const CustomerForgotPasswordDialog = ({ open, onClose }) => {
     if (step === "otp") return "Enter the 6-digit code we sent to your registered email.";
     if (step === "reset") return "Choose a new password for your account.";
     if (step === "done") return "Your account password has been updated successfully.";
-    return "We’ll send a one-time code to the email on file if the account exists.";
+    return "We will send a one-time code to the email on file if the account exists.";
   }, [step]);
 
   const closeAndReset = () => {

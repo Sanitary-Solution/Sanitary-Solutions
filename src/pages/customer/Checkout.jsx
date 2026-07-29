@@ -61,7 +61,6 @@ export const Checkout = () => {
         items: cart.map((item) => ({
           productId: item.product._id || item.product.id,
           quantity: item.quantity,
-          size: item.size?.label || "",
         })),
       });
 
@@ -180,13 +179,10 @@ export const Checkout = () => {
           <p className="text-sm font-semibold text-gray-900">Selected variants</p>
           <div className="mt-4 space-y-4">
             {cart.map((item) => (
-              <div
-                key={`${item.product.id}-${item.size?.label || "default"}`}
-                className="flex items-center justify-between text-sm"
-              >
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">
                   {item.product.name}
-                  {item.size?.label ? ` · Variant: ${item.size.label}` : ""}
+                  {item.size?.label ? ` - Variant: ${item.size.label}` : ""}
                 </span>
                 <span className="font-semibold text-gray-900">
                   {formatCurrency(item.product.price * item.quantity)}

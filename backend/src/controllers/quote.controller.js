@@ -45,6 +45,7 @@ const formatQuoteForClient = (quoteDoc) => {
       productId: item.product ? String(item.product) : null,
       productName: item.productName,
       brand: item.brand || "",
+      size: item.size || "",
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.lineTotal,
@@ -103,6 +104,7 @@ const normalizeQuoteItems = async (quoteItemsPayload) => {
     }
 
     const brand = item.brand?.trim() || product?.brand || "";
+    const size = String(item.size || item.variant || item.variantLabel || "").trim();
     const parsedUnitPrice = Number(item.unitPrice);
     const unitPrice =
       Number.isFinite(parsedUnitPrice) && parsedUnitPrice >= 0
@@ -113,6 +115,7 @@ const normalizeQuoteItems = async (quoteItemsPayload) => {
       product: product?._id,
       productName,
       brand,
+      size,
       quantity,
       unitPrice,
       lineTotal: Number((unitPrice * quantity).toFixed(2)),
@@ -125,8 +128,9 @@ const normalizeQuoteItems = async (quoteItemsPayload) => {
 const summarizeQuoteItems = (items = []) =>
   items
     .map((item) => {
+      const sizePart = item.size ? ` · Variant: ${item.size}` : "";
       const brandPart = item.brand ? ` (${item.brand})` : "";
-      return `${item.productName}${brandPart} x ${item.quantity}`;
+      return `${item.productName}${sizePart}${brandPart} x ${item.quantity}`;
     })
     .join(", ");
 

@@ -114,10 +114,12 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [cartLoading, setCartLoading] = useState(true);
   const [cartError, setCartError] = useState("");
+  const [cartNotice, setCartNotice] = useState(null);
 
   const cartRef = useRef([]);
   const syncEmailRef = useRef(syncEmail);
   const mutationQueueRef = useRef(Promise.resolve());
+  const cartNoticeTimerRef = useRef(null);
 
   const setCartState = (items) => {
     cartRef.current = items;
@@ -130,9 +132,28 @@ export const CartProvider = ({ children }) => {
     return run;
   };
 
+  const dismissCartNotice = () => {
+    if (cartNoticeTimerRef.current) {
+      clearTimeout(cartNoticeTimerRef.current);
+      cartNoticeTimerRef.current = null;
+    }
+    setCartNotice(null);
+  };
+
+  const showCartNotice = (notice) => {
+    dismissCartNotice();
+    setCartNotice(notice);
+    cartNoticeTimerRef.current = setTimeout(() => {
+      setCartNotice(null);
+      cartNoticeTimerRef.current = null;
+    }, 2500);
+  };
+
   useEffect(() => {
     cartRef.current = cart;
   }, [cart]);
+
+  useEffect(() => () => dismissCartNotice(), []);
 
   useEffect(() => {
     syncEmailRef.current = syncEmail;
@@ -245,7 +266,14 @@ export const CartProvider = ({ children }) => {
           ];
 
       setCartState(nextItems);
-      await syncItemsToBackend(nextItems);
+      const synced = await syncItemsToBackend(nextItems);
+      if (synced) {
+        showCartNotice({
+          productName: normalizedProduct.name,
+          variantLabel: sizeLabel,
+          quantity: nextQuantity,
+        });
+      }
     });
   };
 
@@ -362,6 +390,7 @@ export const CartProvider = ({ children }) => {
       cart,
       cartLoading,
       cartError,
+      cartNotice,
       sessionId,
       syncEmail,
       addToCart,
@@ -369,10 +398,11 @@ export const CartProvider = ({ children }) => {
       removeFromCart,
       clearCart,
       setCartSyncEmail,
+      dismissCartNotice,
       getCartTotal,
       getCartItemsCount,
     }),
-    [cart, cartLoading, cartError, sessionId, syncEmail]
+    [cart, cartLoading, cartError, cartNotice, sessionId, syncEmail]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

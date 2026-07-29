@@ -127,6 +127,14 @@ export const getOrdersApi = async (params = {}) => {
   };
 };
 
+export const getContactsApi = async (params = {}) => {
+  const response = await apiRequest(`/contacts${buildQueryString(params)}`, { auth: true });
+  return {
+    data: unwrap(response) || [],
+    meta: response?.meta || null,
+  };
+};
+
 export const updateOrderStatusApi = async (id, status) => {
   const response = await apiRequest(`/orders/${id}/status`, {
     method: "PATCH",
@@ -138,6 +146,10 @@ export const updateOrderStatusApi = async (id, status) => {
 
 export const deleteOrderApi = async (id) => {
   await apiRequest(`/orders/${id}`, { method: "DELETE", auth: true });
+};
+
+export const deleteContactApi = async (id) => {
+  await apiRequest(`/contacts/${id}`, { method: "DELETE", auth: true });
 };
 
 export const getQuotesApi = async (params = {}) => {

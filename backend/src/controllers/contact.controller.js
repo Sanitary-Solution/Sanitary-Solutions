@@ -61,3 +61,14 @@ export const updateContactMessageStatus = asyncHandler(async (req, res) => {
 
   res.status(200).json(new ApiResponse(200, "Message status updated", message));
 });
+
+export const deleteContactMessage = asyncHandler(async (req, res) => {
+  const message = await ContactMessage.findById(req.params.id);
+  if (!message) {
+    throw new ApiError(404, "Message not found");
+  }
+
+  await message.deleteOne();
+
+  res.status(200).json(new ApiResponse(200, "Message deleted"));
+});

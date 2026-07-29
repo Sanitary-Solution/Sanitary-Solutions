@@ -24,6 +24,7 @@ const formatOrderForClient = (orderDoc) => {
     status: order.status,
     items: order.items?.length || 0,
     lineItems: order.items || [],
+    canCancel: order.status === "pending",
     date: new Date(order.createdAt).toISOString().split("T")[0],
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
@@ -70,6 +71,33 @@ const getProductSize = (product, requestedSize) => {
   }
 
   return product.sizes?.[0] || null;
+};
+
+const restoreInventoryFromOrder = async (order) => {
+  for (const item of order.items || []) {
+    if (!item.product) continue;
+
+    const product = await Product.findById(item.product);
+    if (!product) continue;
+
+    const quantity = Number(item.quantity || 0);
+    if (!Number.isInteger(quantity) || quantity < 1) continue;
+
+    const requestedSize = String(item.size || "").trim();
+    const selectedSize = requestedSize && product.getSizeByLabel ? product.getSizeByLabel(requestedSize) : null;
+
+    if (selectedSize) {
+      selectedSize.quantity = Number(selectedSize.quantity || 0) + quantity;
+      selectedSize.inStock = selectedSize.quantity > 0;
+      product.quantity = product.sizes.reduce((sum, size) => sum + Number(size.quantity || 0), 0);
+      product.inStock = product.quantity > 0;
+    } else {
+      product.quantity = Number(product.quantity || 0) + quantity;
+      product.inStock = product.quantity > 0;
+    }
+
+    await product.save();
+  }
 };
 
 const buildOrderNumber = async () => {
@@ -290,7 +318,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     },
     items: normalizedItems,
     total,
-    status: "processing",
+    status: "pending",
   });
 
   for (const { product, quantity, sizeLabel } of productUpdates) {
@@ -327,10 +355,35 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Order not found");
   }
 
+  if (order.status === "cancelled") {
+    throw new ApiError(409, "Cancelled orders cannot be updated");
+  }
+
+  if (status === "cancelled") {
+    throw new ApiError(400, "Admins cannot set orders to cancelled");
+  }
+
   order.status = status;
   await order.save();
 
   res.status(200).json(new ApiResponse(200, "Order status updated", formatOrderForClient(order)));
+});
+
+export const cancelMyOrder = asyncHandler(async (req, res) => {
+  const order = await findCustomerOrder(req.customer._id, req.params.id);
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  if (order.status !== "pending") {
+    throw new ApiError(409, "Only pending orders can be cancelled");
+  }
+
+  order.status = "cancelled";
+  await order.save();
+  await restoreInventoryFromOrder(order);
+
+  res.status(200).json(new ApiResponse(200, "Order cancelled", formatOrderForClient(order)));
 });
 
 export const deleteOrder = asyncHandler(async (req, res) => {
@@ -344,6 +397,10 @@ export const deleteOrder = asyncHandler(async (req, res) => {
     customer.totalOrders = Math.max(0, customer.totalOrders - 1);
     customer.totalSpent = Math.max(0, customer.totalSpent - order.total);
     await customer.save();
+  }
+
+  if (order.status !== "cancelled") {
+    await restoreInventoryFromOrder(order);
   }
 
   await order.deleteOne();

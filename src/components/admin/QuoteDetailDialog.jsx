@@ -6,7 +6,7 @@ export const QuoteDetailDialog = ({ open, onClose, quote }) => (
     open={open}
     onClose={onClose}
     title={`Quote ${quote?.id || ""}`}
-    description="Quote request details."
+    description="Quote request details and selected variants."
   >
     {quote ? (
       <div className="space-y-3 text-sm text-gray-700">
@@ -24,11 +24,13 @@ export const QuoteDetailDialog = ({ open, onClose, quote }) => (
         </p>
         {(quote.quoteItems || []).length > 0 ? (
           <div>
-            <p className="font-semibold">Selected products:</p>
+            <p className="font-semibold">Selected variants:</p>
             <div className="mt-1 space-y-1">
               {quote.quoteItems.map((item, index) => (
                 <p key={`${item.productName}-${index}`}>
-                  {item.productName} ({item.brand || "No brand"}) x {item.quantity}
+                  {item.productName}
+                  {item.size ? ` - Variant: ${item.size}` : ""}
+                  {item.brand ? ` (${item.brand})` : " (No brand)"} x {item.quantity}
                 </p>
               ))}
             </div>

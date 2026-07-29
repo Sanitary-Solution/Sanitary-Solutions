@@ -17,6 +17,11 @@ const quoteItemSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    size: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     quantity: {
       type: Number,
       required: true,

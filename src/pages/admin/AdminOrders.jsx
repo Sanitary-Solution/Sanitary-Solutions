@@ -8,7 +8,7 @@ import { OrderDetailDialog } from "../../components/admin/OrderDetailDialog";
 import { formatCurrency } from "../../utils/currency";
 import { deleteOrderApi, getOrdersApi, updateOrderStatusApi } from "../../services/adminApi";
 
-const ORDER_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"];
+const ORDER_STATUSES = ["pending", "processing", "shipped", "delivered"];
 
 export const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -131,16 +131,22 @@ export const AdminOrders = () => {
                 <Td>{order.customer}</Td>
                 <Td>{order.email}</Td>
                 <Td>
-                  <Select
-                    value={order.status}
-                    onChange={(event) => handleStatusChange(order, event.target.value)}
-                  >
-                    {ORDER_STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </Select>
+                  {order.status === "cancelled" ? (
+                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                      cancelled
+                    </span>
+                  ) : (
+                    <Select
+                      value={order.status}
+                      onChange={(event) => handleStatusChange(order, event.target.value)}
+                    >
+                      {ORDER_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </Td>
                 <Td>{formatCurrency(order.total)}</Td>
                 <Td>{order.date}</Td>

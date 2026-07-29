@@ -50,6 +50,20 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    originalPrice: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    discountedPrice: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    discountEnabled: {
+      type: Boolean,
+      default: false,
+    },
     category: {
       type: String,
       required: true,
@@ -131,7 +145,10 @@ productSchema.pre("validate", function normalizeProduct(next) {
 
   if (normalizedSizes.length > 0) {
     const totalQuantity = normalizedSizes.reduce((sum, size) => sum + Number(size.quantity || 0), 0);
-    this.price = Number(normalizedSizes[0]?.price ?? this.price ?? 0);
+    this.price =
+      this.discountEnabled && Number.isFinite(this.discountedPrice)
+        ? Number(this.discountedPrice)
+        : Number(normalizedSizes[0]?.price ?? this.price ?? 0);
     this.quantity = totalQuantity;
     this.inStock = totalQuantity > 0;
     this.sizes = normalizedSizes.map((size) => ({
@@ -139,7 +156,27 @@ productSchema.pre("validate", function normalizeProduct(next) {
       inStock: Number(size.quantity || 0) > 0,
     }));
   } else {
-    this.price = Number(this.price ?? 0);
+    const normalizedOriginalPrice = this.originalPrice === null ? null : Number(this.originalPrice);
+    const normalizedDiscountedPrice =
+      this.discountedPrice === null ? null : Number(this.discountedPrice);
+    const hasDiscount =
+      Boolean(this.discountEnabled) &&
+      Number.isFinite(normalizedOriginalPrice) &&
+      Number.isFinite(normalizedDiscountedPrice) &&
+      normalizedOriginalPrice > normalizedDiscountedPrice;
+
+    if (hasDiscount) {
+      this.originalPrice = normalizedOriginalPrice;
+      this.discountedPrice = normalizedDiscountedPrice;
+      this.price = normalizedDiscountedPrice;
+      this.discountEnabled = true;
+    } else {
+      this.originalPrice = null;
+      this.discountedPrice = null;
+      this.discountEnabled = false;
+      this.price = Number(this.price ?? normalizedOriginalPrice ?? 0);
+    }
+
     this.quantity = Number(this.quantity ?? 0);
     this.inStock = this.quantity > 0 ? Boolean(this.inStock ?? true) : false;
   }

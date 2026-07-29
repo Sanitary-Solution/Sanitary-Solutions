@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Table, TBody, Td, Th, THead } from "../../components/ui/Table";
 import { ProductDialog } from "../../components/admin/ProductDialog";
+import { PriceDisplay } from "../../components/common/PriceDisplay";
 import { Modal } from "../../components/ui/Modal";
 import { formatCurrency } from "../../utils/currency";
 import {
@@ -168,7 +169,15 @@ export const AdminProducts = () => {
                 </Td>
                 <Td>{product.category}</Td>
                 <Td>{product.quantity}</Td>
-                <Td>{formatCurrency(product.price)}</Td>
+                <Td>
+                  <PriceDisplay
+                    price={product.price}
+                    originalPrice={product.originalPrice}
+                    discountEnabled={product.discountEnabled}
+                    priceClassName="text-sm font-semibold text-blue-600"
+                    originalClassName="text-xs text-gray-400 line-through"
+                  />
+                </Td>
                 <Td>
                   <div className="flex items-center justify-end gap-2">
                     <Button
@@ -248,7 +257,14 @@ export const AdminProducts = () => {
               <span className="font-semibold">Brand:</span> {selectedProduct.brand}
             </p>
             <p>
-              <span className="font-semibold">Price:</span> {formatCurrency(selectedProduct.price)}
+              <span className="font-semibold">Price:</span>{" "}
+              <PriceDisplay
+                price={selectedProduct.price}
+                originalPrice={selectedProduct.originalPrice}
+                discountEnabled={selectedProduct.discountEnabled}
+                priceClassName="font-semibold text-blue-600"
+                originalClassName="text-xs text-gray-400 line-through"
+              />
             </p>
             <p>
               <span className="font-semibold">Stock:</span> {selectedProduct.quantity}

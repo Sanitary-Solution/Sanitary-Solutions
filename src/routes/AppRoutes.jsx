@@ -13,6 +13,7 @@ import { AdminProducts } from "../pages/admin/AdminProducts";
 import { AdminOrders } from "../pages/admin/AdminOrders";
 import { AdminQuotes } from "../pages/admin/AdminQuotes";
 import { AdminCustomers } from "../pages/admin/AdminCustomers";
+import { Feedback } from "../pages/admin/Feedback";
 import { Categories } from "../pages/admin/Categories";
 import { Brands } from "../pages/admin/Brands";
 import { Reports } from "../pages/admin/Reports";
@@ -76,6 +77,7 @@ export const AppRoutes = () => (
       <Route path="categories" element={<Categories />} />
       <Route path="brands" element={<Brands />} />
       <Route path="orders" element={<AdminOrders />} />
+      <Route path="feedback" element={<Feedback />} />
       <Route path="quotes" element={<AdminQuotes />} />
       <Route path="customers" element={<AdminCustomers />} />
       <Route path="reports" element={<Reports />} />

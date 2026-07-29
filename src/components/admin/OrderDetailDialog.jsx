@@ -32,7 +32,7 @@ export const OrderDetailDialog = ({ open, onClose, order }) => (
               {(order.lineItems || []).map((item, index) => (
                 <p key={`${order.id}-${item.name}-${index}`}>
                   {item.name}
-                  {item.size ? ` · Variant: ${item.size}` : ""} x {item.quantity}
+                  {item.size ? ` - Variant: ${item.size}` : ""} x {item.quantity}
                 </p>
               ))}
             </div>

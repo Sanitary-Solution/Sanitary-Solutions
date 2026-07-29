@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import { ImageWithFallback } from "../../components/common/ImageWithFallback";
+import { PriceDisplay } from "../../components/common/PriceDisplay";
 import { Button } from "../../components/ui/Button";
 import { useCart } from "../../contexts/CartContext";
 import { formatCurrency } from "../../utils/currency";
@@ -54,6 +55,8 @@ export const ProductDetail = () => {
   const activeStock = selectedSize?.quantity ?? product?.quantity ?? 0;
   const activeImage = images[selectedImageIndex] || product?.image || "";
   const activeSizeLabel = selectedSize?.label || "Default";
+  const hasSizeVariants = sizes.length > 0;
+  const showProductDiscount = Boolean(product?.discountEnabled && !hasSizeVariants);
 
   if (loading) {
     return (
@@ -170,7 +173,12 @@ export const ProductDetail = () => {
             <p className="text-xs uppercase tracking-wide text-gray-500">Selected variant</p>
             <p className="mt-1 text-sm font-medium text-gray-900">{activeSizeLabel}</p>
             <p className="mt-4 text-xs uppercase tracking-wide text-gray-500">Price</p>
-            <p className="text-3xl font-semibold text-blue-600">{formatCurrency(activePrice)}</p>
+            <PriceDisplay
+              price={activePrice}
+              originalPrice={showProductDiscount ? product.originalPrice : null}
+              discountEnabled={showProductDiscount}
+              priceClassName="text-3xl font-semibold text-blue-600"
+            />
             <p className="mt-2 text-sm text-gray-500">
               Stock status: {activeStock > 0 ? "Available" : "Out of stock"}
             </p>

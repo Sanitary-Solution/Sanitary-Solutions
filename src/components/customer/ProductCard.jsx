@@ -3,8 +3,8 @@ import { ShoppingCart, Star } from "lucide-react";
 import { Card, CardContent, CardFooter } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { ImageWithFallback } from "../common/ImageWithFallback";
+import { PriceDisplay } from "../common/PriceDisplay";
 import { useCart } from "../../contexts/CartContext";
-import { formatCurrency } from "../../utils/currency";
 
 export const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
@@ -53,9 +53,12 @@ export const ProductCard = ({ product }) => {
         </CardContent>
 
         <CardFooter className="flex items-center justify-between px-4 py-3">
-          <p className="text-lg font-semibold text-blue-600">
-            {formatCurrency(product.price)}
-          </p>
+          <PriceDisplay
+            price={product.price}
+            originalPrice={product.originalPrice}
+            discountEnabled={product.discountEnabled}
+            priceClassName="text-lg font-semibold text-blue-600"
+          />
           <Button
             size="sm"
             onClick={handleAddToCart}
